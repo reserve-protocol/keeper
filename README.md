@@ -19,5 +19,3 @@ Needed:
 API_KEY=yourapikey
 API_SECRET=yourapisecret
 ```
-
-Then run `yarn start`, which will run the typescript code using `ts-node`, and connecting to your Defender Relayer via the HTTP API.
