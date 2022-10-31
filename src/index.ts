@@ -4,10 +4,16 @@ import { DefenderRelaySigner, DefenderRelayProvider } from 'defender-relay-clien
 import { ethers } from 'ethers'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-const facadeAddr = '0x798918a19AedDA5B923ffC053a63e6a96911dC0a'
-const speed = 'average'
+const facadeActAddr = '0x348644F24FA34c40a8E3C4Cf9aF14f8a96aD63fC' // # v1.1.0
+const speed = 'safeLow'
+
+// Append RTokens to this list to have them kept by the keeper
+const rTokenAddrs = ['0x40008f2E9B40a5Cb6AfC9B2C9c018Ed109b8CB55'] // can expand
+// Careful: This address (0x40008f2E9B40a5Cb6AfC9B2C9c018Ed109b8CB55) has no auction limits,
+// so most keeps result in a tx. 
 
 const keepRToken = async (signer: DefenderRelaySigner, rTokenAddr: string) => {
+  console.log("========================================================")
   // Fetch call to make
   const abi = [{
       "inputs": [
@@ -33,16 +39,17 @@ const keepRToken = async (signer: DefenderRelaySigner, rTokenAddr: string) => {
       "stateMutability": "nonpayable",
       "type": "function"
     }]
-    const facade = new ethers.Contract(facadeAddr, abi, signer);
-    const [to, data] = await facade.callStatic.getActCalldata(rTokenAddr);
+    const facadeAct = new ethers.Contract(facadeActAddr, abi, signer);
+    const [to, data] = await facadeAct.callStatic.getActCalldata(rTokenAddr);
     console.log(to, data);
 
     // Send tx if real
     if (to != ZERO_ADDRESS && data != "0x") {
         const tx = await signer.populateTransaction({to, data, speed})
         tx.gasLimit = (tx.gasLimit as ethers.BigNumber).mul(101).div(100)
-        console.log(await signer.checkTransaction(tx));
-        console.log(await signer.sendTransaction(tx));
+        console.log(`Sending tx for RToken ${rTokenAddr}`, await signer.sendTransaction(tx));
+    } else {
+      console.log(`No action required for RToken ${rTokenAddr}`)
     }
 }
 
@@ -55,12 +62,9 @@ export async function handler(credentials: RelayerParams) {
   const provider = new DefenderRelayProvider(credentials);
   const signer = new DefenderRelaySigner(credentials, provider, { speed });
 
-  const rTokenAddrs = ['0x40008f2E9B40a5Cb6AfC9B2C9c018Ed109b8CB55'] // can expand
-
   for (const addr of rTokenAddrs) {
     await keepRToken(signer, addr)
   }
-
 }
 
 // Sample typescript type definitions
